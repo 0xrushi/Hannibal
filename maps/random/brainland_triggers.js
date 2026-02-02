@@ -17,15 +17,15 @@ function loop (n, fn){for (var i=0; i<n; i++){fn(i);}}
 
   loop(TriggerHelper.GetNumberOfPlayers(), p => {
 
-    TriggerHelper
-      .GetPlayerComponent(p)
-      .SetResourceCounts({
-        food:  1000, 
-        wood:  1000, 
-        stone: 1000, 
+    var playerEnt = Engine.QueryInterface(SYSTEM_ENTITY, IID_PlayerManager).GetPlayerByID(p);
+    var cmpPlayer = Engine.QueryInterface(playerEnt, IID_Player);
+    if (cmpPlayer)
+      cmpPlayer.SetResourceCounts({
+        food:  1000,
+        wood:  1000,
+        stone: 1000,
         metal: 1000
-      })
-    ;
+      });
 
   });
 
@@ -45,14 +45,8 @@ Trigger.prototype.cinema = function(){
   Object.keys(Trigger.prototype).forEach(k => deb(k));
 
 
-  Engine.SetCameraData(...start);
-
-  deb("Camera: %s, %s, %s", Engine.CameraGetX(), Engine.CameraGetY(), Engine.CameraGetZ());
-
-    //   Engine.SetCameraData(data.camera.PosX, data.camera.PosY, data.camera.PosZ,
-    //      data.camera.RotX, data.camera.RotY, data.camera.Zoom);
-
-    Engine.CameraMoveTo(400, 400);
+  // Camera API not available in 0.27.x simulation scripts
+  deb("------: Trigger.cinema: camera API not available in simulation context");
 
   deb("------: Trigger.cinema.out");
 

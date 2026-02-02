@@ -64,7 +64,8 @@ var HANNIBAL = (function() {
     );});},
     
     chat: function(id, msg){
-      Engine.PostCommand(id, {"type": "chat", "message": id + "::" + msg});
+      // 0 A.D. 0.27+: AI chat uses the "aichat" command type ("chat" is rejected).
+      Engine.PostCommand(id, {"type": "aichat", "message": id + "::" + msg});
     },
 
   };
@@ -243,6 +244,7 @@ H.extend(H, {
     var i=0,o=0;while(a[i]!==undefined){if(fn(a[i])){a.splice(i,1);o++;}else{i++;}}return o;
   },
   contains:   function (a, e){return a.indexOf(e)!==-1;},
+  includes:   function (a, e){return a.indexOf(e)!==-1;},
   toFixed:    function (a, n){ n=n||1;return a.map(function(n){return n.toFixed(1);});},
   rotate:     function (a, n){n = n % a.length; return a.concat(a.splice(0,n));},
   // unique:     function (a){var u=[];a.forEach(function(i){if(u.indexOf(i)===-1){u.push(i);}});return u;},
@@ -400,7 +402,7 @@ H.extend(H, {
     });
     return r;
   },
-  unique:     function (a){return [...Set(a)];},
+  unique:     function (a){return [...new Set(a)];},
   attribs:    function (o){return Object.keys(o);},
   count:      function (o){return Object.keys(o).length;},
   values:     function (o){return Object.keys(o).map(function(k){return o[k];});},
@@ -412,6 +414,7 @@ H.extend(H, {
       objs = args.slice(0, -1),
       fn   = args.slice(-1)[0];
       objs.forEach(o => {
+        if (!o) {return;}
         var i, k, a = Object.keys(o), al= a.length;
         for(i=0;i<al;i++){k=a[i];fn(k, o[k]);}
       });
@@ -674,14 +677,14 @@ HANNIBAL = (function(H){
       H.deb("      :");
       H.deb("     A:     map from DEBUG: %s / %s", H.Debug.map ? H.Debug.map : "unkown", ss.gameType);
       H.deb("     A:                map: w: %s, h: %s, c: %s, cells: %s", ss.passabilityMap.width, ss.passabilityMap.height, ss.circularMap, gs.cellSize);
-      H.deb("     A:          _entities: %s [  ]", H.count(ss._entities));
-      H.deb("     A:         _templates: %s [  ]", H.count(ss._templates));
-      H.deb("     A:     _techTemplates: %s [  ]", H.count(ss._techTemplates));
-      H.deb("     H: _techModifications: %s [%s]", H.count(ss._techModifications[id]), H.attribs(ss._techModifications[id]));
-      H.deb("     H:     researchQueued: %s [  ]", H.count(ss.playersData[id].researchQueued));
-      H.deb("     H:    researchStarted: %s [  ]", H.count(ss.playersData[id].researchStarted));
-      H.deb("     H:    researchedTechs: %s [%s]", H.count(ss.playersData[id].researchedTechs), H.attribs(ss.playersData[id].researchedTechs).join(", "));
-      H.deb("     A:       barterPrices: %s", H.prettify(ss.barterPrices));
+      H.deb("     A:          _entities: %s [  ]", H.count(ss._entities || {}));
+      H.deb("     A:         _templates: %s [  ]", H.count(ss._templates || {}));
+      H.deb("     A:     _techTemplates: %s [  ]", H.count(ss._techTemplates || {}));
+      H.deb("     H: _techModifications: %s [%s]", H.count((ss._techModifications || {})[id] || {}), H.attribs((ss._techModifications || {})[id] || {}));
+      H.deb("     H:     researchQueued: %s [  ]", H.count((ss.playersData[id] || {}).researchQueued || {}));
+      H.deb("     H:    researchStarted: %s [  ]", H.count((ss.playersData[id] || {}).researchStarted || {}));
+      H.deb("     H:    researchedTechs: %s [%s]", H.count((ss.playersData[id] || {}).researchedTechs || {}), H.attribs((ss.playersData[id] || {}).researchedTechs || {}).join(", "));
+      H.deb("     A:       barterPrices: %s", H.prettify(ss.barterPrices || {}));
 
     },
     logPlayers: function(players){
@@ -1798,27 +1801,29 @@ HANNIBAL = (function(H){
     },
     setNeighbors8: function(neighbors, node) {
 
-      var x = node.x, y = node.y, grid = this.grid;
+      var x = node.x, y = node.y, grid = this.grid,
+        rowL = grid[x - 1], row = grid[x], rowR = grid[x + 1];
 
-      neighbors[0] = grid[x-1][y];
-      neighbors[1] = grid[x+1][y];
-      neighbors[2] = grid[x][y-1];
-      neighbors[3] = grid[x][y+1];
+      neighbors[0] = rowL ? (rowL[y]     || null) : null;
+      neighbors[1] = rowR ? (rowR[y]     || null) : null;
+      neighbors[2] = row[y - 1] || null;
+      neighbors[3] = row[y + 1] || null;
 
-      neighbors[4] = grid[x-1][y-1];
-      neighbors[5] = grid[x+1][y-1];
-      neighbors[6] = grid[x-1][y+1];
-      neighbors[7] = grid[x+1][y+1];
+      neighbors[4] = rowL ? (rowL[y - 1] || null) : null;
+      neighbors[5] = rowR ? (rowR[y - 1] || null) : null;
+      neighbors[6] = rowL ? (rowL[y + 1] || null) : null;
+      neighbors[7] = rowR ? (rowR[y + 1] || null) : null;
 
     },
     setNeighbors4: function(neighbors, node) {
 
-      var x = node.x, y = node.y, grid = this.grid;
+      var x = node.x, y = node.y, grid = this.grid,
+        rowL = grid[x - 1], row = grid[x], rowR = grid[x + 1];
 
-      neighbors[0] = grid[x-1][y];
-      neighbors[1] = grid[x+1][y];
-      neighbors[2] = grid[x][y-1];
-      neighbors[3] = grid[x][y+1];
+      neighbors[0] = rowL ? (rowL[y] || null) : null;
+      neighbors[1] = rowR ? (rowR[y] || null) : null;
+      neighbors[2] = row[y - 1] || null;
+      neighbors[3] = row[y + 1] || null;
 
     }
 
@@ -2156,7 +2161,7 @@ HANNIBAL = (function(H){
 
           neighbor = neighbors[i];
 
-          if (neighbor.closed || neighbor.weight === 0 || neighbor.visited) {continue;}
+          if (!neighbor || neighbor.closed || neighbor.weight === 0 || neighbor.visited) {continue;}
 
           distance = (
             currentNode.x === neighbor.x ? 1 :
@@ -2380,9 +2385,9 @@ HANNIBAL = (function(H){
           dslobject = {
             name:        "item",
             resources:   ids, 
-            ispath:      tpln.contains("path"),
-            isresource:  tpln.contains("resources"),
-            foundation:  tpln.contains("foundation"),
+            ispath:      tpln.includes("path"),
+            isresource:  tpln.includes("resources"),
+            foundation:  tpln.includes("foundation"),
             toString :   () => H.format("[dslobject item[%s]]", id)
           };
 
@@ -2391,7 +2396,7 @@ HANNIBAL = (function(H){
         } // else { deb("   AST: no match: %s -> %s | %s", msg.data.source, this.id, this.name);}
 
 
-      } else if (H.contains(this.resources, id)){
+      } else if (H.includes(this.resources, id)){
 
         if (msg.name === "Destroy") {
 
@@ -2926,7 +2931,7 @@ HANNIBAL = (function(H){
 
   //     if (phase === "phase.village"){
 
-  //       phaseName = H.QRY("civilcentre CONTAIN RESEARCH").filter(n => n.name.contains("town"))[0].name;
+  //       phaseName = H.QRY("civilcentre CONTAIN RESEARCH").filter(n => n.name.includes("town"))[0].name;
   //       phaseCost = H.Technologies[phaseName].cost;
   //       housePopu = H.QRY(class2name("house")).first().costs.population * -1;
 
@@ -3434,7 +3439,7 @@ HANNIBAL = (function(H){
           ctxClone[serializer].parent  = ctxClone;
           ctxClone[serializer].name    = ctxClone.name + ":" + serializer;
 
-        } else if (!(action === "log" && !H.contains(this.logger, serializer))){
+        } else if (!(action === "log" && !H.includes(this.logger, serializer))){
           // ( obj[action] && obj[action]() );
           obj[action]();
 
@@ -3481,7 +3486,7 @@ HANNIBAL = (function(H){
           this[serializer].parent  = this;
           this[serializer].name    = this.name + ":" + serializer;
 
-        } else if (!(action === "log" && !H.contains(this.logger, serializer))){
+        } else if (!(action === "log" && !H.includes(this.logger, serializer))){
           if (typeof obj[action] !== "function"){
             H.logObject(obj, "obj");
           }
@@ -3519,11 +3524,47 @@ HANNIBAL = (function(H){
     },
     connectEngine: function(launcher, gameState, sharedScript, settings){
 
-      var 
+      var
         ss = sharedScript,
-        gs = gameState, 
-        entities = gs.entities._entities,
+        gs = gameState,
         sanitize = H.saniTemplateName;
+
+      // 0.27.x: GameState no longer exposes cellSize consistently.
+      // Hannibal assumes the passability grid cell size in meters (typically 4).
+      var cellSize = (
+        gs.cellSize || gs.cellsize ||
+        (ss.passabilityMap && (ss.passabilityMap.cellSize || ss.passabilityMap.cellsize)) ||
+        4
+      );
+
+      // 0.27.x: convert Map-based entities to plain object
+      function entitiesToObject(raw) {
+        if (raw instanceof Map) {
+          var obj = {};
+          raw.forEach(function(v, k) { obj[k] = v; });
+          return obj;
+        }
+        return raw || {};
+      }
+
+      // 0.27.x: convert _templatesModifications (keyed by template then player)
+      // to old format (keyed by player then template)
+      function convertModifications(tmods) {
+        var result = {};
+        if (!tmods) return result;
+        for (var template in tmods) {
+          if (!tmods.hasOwnProperty(template)) continue;
+          for (var player in tmods[template]) {
+            if (!tmods[template].hasOwnProperty(player)) continue;
+            if (!result[player]) result[player] = {};
+            result[player][template] = tmods[template][player];
+          }
+        }
+        return result;
+      }
+
+      var entities = entitiesToObject(gs.entities._entities);
+      var modifications = convertModifications(ss._templatesModifications);
 
       this.updateEngine = sharedScript => {
 
@@ -3538,9 +3579,10 @@ HANNIBAL = (function(H){
         this.territory          = ss.territoryMap;
         this.passability        = ss.passabilityMap;
         this.passabilityClasses = ss.passabilityClasses;
-        this.techtemplates      = ss._techTemplates;
+        this.techtemplates      = ss._techTemplates || {};
         this.player             = ss.playersData[this.id];
         this.players            = ss.playersData;
+        this.modifications      = convertModifications(ss._templatesModifications);
         // this.metadata           = ss._entityMetadata[this.id];
       };
 
@@ -3555,20 +3597,37 @@ HANNIBAL = (function(H){
         difficulty:          settings.difficulty,               // Sandbox 0, easy 1, or nightmare or ....
 
         phase:               gs.currentPhase(),          // num
-        cellsize:            gs.cellSize, 
-        width:               ss.passabilityMap.width  *4, 
-        height:              ss.passabilityMap.height *4, 
+        cellsize:            cellSize,
+        width:               ss.passabilityMap.width  * cellSize,
+        height:              ss.passabilityMap.height * cellSize,
         circular:            ss.circularMap,
         territory:           ss.territoryMap,
         passability:         ss.passabilityMap,
 
-        // API read only, static
-        templates:           settings.templates,
-        techtemplates:       ss._techTemplates, 
+        // API read only, static (lazy-loading via SharedScript.GetTemplate in 0.27.x)
+        templates:           new Proxy(settings.templates || ss._templates || {}, {
+          get: function(target, key) {
+            if (key in target) return target[key] || undefined;
+            if (typeof key === "string" && ss.GetTemplate) {
+              var tpl = ss.GetTemplate(key);
+              if (tpl) { target[key] = tpl; return tpl; }
+            }
+            return undefined;
+          },
+          has: function(target, key) {
+            if (key in target) return !!target[key];
+            if (typeof key === "string" && ss.GetTemplate) {
+              var tpl = ss.GetTemplate(key);
+              if (tpl) { target[key] = tpl; return true; }
+            }
+            return false;
+          }
+        }),
+        techtemplates:       ss._techTemplates || {},
 
         // API read only, dynamic
         entities:            entities,
-        modifications:       ss._techModifications,
+        modifications:       modifications,
         player:              ss.playersData[settings.player],
         players:             ss.playersData,
 
@@ -3605,7 +3664,7 @@ HANNIBAL = (function(H){
         // try to get all tech funcs here
         technologies:       new Proxy({}, {get: (proxy, name) => { return (
           name === "available" ? techname => Object.keys(this.modifications).map(sanitize).some(t => t === techname) :
-          name === "templates" ? techname => ss._techTemplates[sanitize(techname)] :
+          name === "templates" ? techname => (ss._techTemplates || {})[sanitize(techname)] :
               undefined
         );}}),
 
@@ -3706,13 +3765,14 @@ HANNIBAL = (function(H){
     initialize: function(){
       var test, self = this;
       function extract(str){
-        if (str && str.contains("phase")){
-          if (str.contains("village")){self["1"].alternates.push(str);}
-          if (str.contains("town")){self["2"].alternates.push(str);}
-          if (str.contains("city")){self["3"].alternates.push(str);}
+        if (str && str.includes("phase")){
+          if (str.includes("village")){self["1"].alternates.push(str);}
+          if (str.includes("town")){self["2"].alternates.push(str);}
+          if (str.includes("city")){self["3"].alternates.push(str);}
         }
       }
       function check(key, tpl){
+        if (!tpl) return;
         if ((test = H.test(tpl, "Identity.RequiredTechnology"))){extract(test);}
         if ((test = H.test(tpl, "requirements.tech"))){extract(test);}
         if ((test = H.test(tpl, "requirements.any"))){test.filter(t => !!t.tech).forEach(t => extract(t.tech));}
@@ -3729,8 +3789,8 @@ HANNIBAL = (function(H){
     finalize: function(){
       this.current = this[this.phase].abbr;
       this.query(this.class2name("civilcentre") + " RESEARCH").forEach(node => {
-        if (node.name.contains("town")){this["1"].next = node.name;}
-        if (node.name.contains("city")){this["2"].next = node.name;}
+        if (node.name.includes("town")){this["1"].next = node.name;}
+        if (node.name.includes("city")){this["2"].next = node.name;}
       });
     },
     activate: function(){
@@ -3746,7 +3806,7 @@ HANNIBAL = (function(H){
     prev: function(phase){return this[(this.find(phase).idx - 1) || 1];},
     find: function(phase){
       for (var i=1; i<=3; i++) {
-        if (H.contains(this[i].alternates, phase)){
+        if (H.includes(this[i].alternates, phase)){
           return this[i];
         }
       } 
@@ -4017,11 +4077,11 @@ HANNIBAL = (function(H){
 
       return (
         this.techtemplates[tpln]      ? "tech" :
-        tpln.contains("units/")       ? "unit" :
-        tpln.contains("structures/")  ? "stuc" :
-        tpln.contains("other/")       ? "othr" :
-        tpln.contains("gaia/")        ? "gaia" :
-        tpln.contains("pair_/")       ? "pair" :
+        tpln.includes("units/")       ? "unit" :
+        tpln.includes("structures/")  ? "stuc" :
+        tpln.includes("other/")       ? "othr" :
+        tpln.includes("gaia/")        ? "gaia" :
+        tpln.includes("pair_/")       ? "pair" :
           "XXXX"
       );
 
@@ -4081,6 +4141,8 @@ HANNIBAL = (function(H){
         tpl  = this.templates[key] || this.techtemplates[key];
         name = H.saniTemplateName(key);
 
+        if (!tpl) return;
+
         if (!this.nodes[name]){
 
           this.nodes[name] = {
@@ -4098,9 +4160,9 @@ HANNIBAL = (function(H){
             products: {              // downlink
               count:          0,     // amount of products
               train:         {},     // {name: node, }
-              build:         {}, 
+              build:         {},
               research:      {}
-            }, 
+            },
             operator:      null,    // planner.operator
           };
 
@@ -4110,13 +4172,15 @@ HANNIBAL = (function(H){
             push(key.slice(0, -2) + "_a");
           }
 
-          // can research tech
-          if ((test = H.test(tpl, "ProductionQueue.Technologies._string"))){
+          // can research tech (0.27.x: Researcher replaces ProductionQueue for techs)
+          if ((test = H.test(tpl, "Researcher.Technologies._string")) ||
+              (test = H.test(tpl, "ProductionQueue.Technologies._string"))){
             test.split(" ").forEach(push);
           }
 
-          // can train ents
-          if ((test = H.test(tpl, "ProductionQueue.Entities._string"))){
+          // can train ents (0.27.x: Trainer replaces ProductionQueue for entities)
+          if ((test = H.test(tpl, "Trainer.Entities._string")) ||
+              (test = H.test(tpl, "ProductionQueue.Entities._string"))){
             test.split(" ").forEach(push);
           }
 
@@ -4785,7 +4849,7 @@ HANNIBAL = (function(H){
         tr = tpl.ResourceGatherer.Rates;
         H.each(tr, function(res, rate){
           has = true;
-          if (res.contains(".")){
+          if (res.includes(".")){
             var [p1, p2] = res.split(".");
             if (!rates[p1]){
               rates[p1] = {};
@@ -4888,7 +4952,7 @@ HANNIBAL = (function(H){
     },
     createEdges: function(verb, inverse, msg, test, targets, debug){
 
-      var store = this.store, nodeTarget, counter = 0, deb = this.deb;
+      var store = this.store, nodeTarget, counter = 0, deb = this.deb.bind(this);
 
       debug = debug || false;
 
@@ -4904,7 +4968,7 @@ HANNIBAL = (function(H){
               counter += 1;
               if (debug){deb("     C: Edge.%s:      -> %s", verb, nodeTarget.name);}
             } else {
-              deb("ERROR : createEdges: verb: %s, no node for %s <= %s", verb, nameTarget, nodeSource.name);
+              deb("WARN  : createEdges: verb: %s, no node for %s <= %s", verb, nameTarget, nodeSource.name);
             }
           });
         }
@@ -5766,7 +5830,7 @@ HANNIBAL = (function(H){
         case "research":
 
           // can ignore cc
-          if (product.contains("phase")){
+          if (product.includes("phase")){
             if ((producer = this.findCentre())){ // TODO: search over all centres
               if (producer.allocs >= this.maxqueue){
                 // deb("   PDC: max: %s", uneval(producer));
@@ -6093,7 +6157,7 @@ HANNIBAL = (function(H){
         msg  = "", tb = H.tab,
         header = "  id,     verb, amt, pro, rem, nodes, flags,                 source, template".split(","),
         tabs   = "   4,       10,   5,   5,   5,     7,     7,                    24, 12".split(",").map(s => ~~s),
-        head   = header.map(String.trim).slice(0, -1),
+        head   = header.map(s => s.trim()).slice(0, -1),
         retr = {
           id:       o => "#" + o.id,
           verb:     o => o.verb,
@@ -6682,18 +6746,20 @@ HANNIBAL = (function(H){
     // break;
 
     dumpgrid: function(name, grid, threshold){
-      var 
-        id = this.id, 
+      if (!grid || !grid.width || !grid.height) return;
+      var
+        id = this.id,
         map = this.context.launcher.map,
         filename = H.format("%s-%s-%s.png", id, map, name);
-      Engine.DumpImage(filename, grid.toArray(), grid.width, grid.height, threshold);    
+      Engine.DumpImage(filename, grid.toArray(), grid.width, grid.height, threshold);
     },
     dumparray: function(name, array, width, height, threshold){
-      var 
-        id = this.id, 
+      if (!width || !height) return;
+      var
+        id = this.id,
         map = this.context.launcher.map,
         filename = H.format("%s-%s-%s.png", id, map, name);
-      Engine.DumpImage(filename, array, width, height, threshold);    
+      Engine.DumpImage(filename, array, width, height, threshold);
     },
     execute: function(command){
       Engine.PostCommand(this.id, command);
@@ -6702,7 +6768,7 @@ HANNIBAL = (function(H){
       this.execute({type: "quit"});
     },
     chat:  function(msg){
-      this.execute({type: "chat", message: msg});
+      this.execute({type: "aichat", message: msg});
     },
     
     format: function(who, what){
@@ -6711,7 +6777,7 @@ HANNIBAL = (function(H){
 
       // Scatter, Line Open, Box, passive, standground
 
-      if (who.length && H.contains(H.Data.formations, what)){
+      if (who.length && H.includes(H.Data.formations, what)){
 
         Engine.PostCommand(this.id, {type: "formation", 
           entities: who, 
@@ -6727,7 +6793,7 @@ HANNIBAL = (function(H){
 
       // deb("   EFF: stance: %s", uneval(arguments));
 
-      if (who.length && H.contains(H.Data.stances, what)){
+      if (who.length && H.includes(H.Data.stances, what)){
 
         Engine.PostCommand(this.id, {type: "stance", 
           entities: who, 
@@ -7264,7 +7330,7 @@ HANNIBAL = (function(H){
   
       H.each(this.players, (id, player) => {
         H.each(player.researchedTechs, key => {
-          if (!H.contains(this.researchedTechs[id], key)){
+          if (!H.includes(this.researchedTechs[id], key)){
 
             this.fire("Advance", {
               player: id,
@@ -7307,7 +7373,7 @@ HANNIBAL = (function(H){
       if (dispatcher[player][type] === undefined){
         dispatcher[player][type] = [listener];
         
-      } else if (!H.contains(dispatcher[player][type], listener)){
+      } else if (!H.includes(dispatcher[player][type], listener)){
         dispatcher[player][type].push(listener);
 
       } else {
@@ -9276,9 +9342,28 @@ HANNIBAL = (function(H){
       // in a script world is asked to register a noun
       // dsl callbacks handler with actor/instance and noun
 
-      this.deb("  GRPS: nounify %s %s, def: %s, size: %s", instance, noun, world[noun], world[noun].size);
+      if (!instance || !instance.assets){
+        this.deb("WARN  : GRPS: nounify: invalid instance for noun '%s'", noun);
+        return instance;
+      }
 
-      if (instance === world[noun]){
+      var def = world && world[noun];
+
+      if (!def){
+        // A script referenced a noun that is not defined in the DSL world.
+        // Don't crash the whole AI tick; create a harmless empty dynamic asset.
+        this.deb("WARN  : GRPS: nounify: missing noun '%s' in world for %s", noun, instance);
+        return this.createAsset({
+          instance:   instance,
+          property:   noun,
+          definition: ["dynamic", "__missing__"],
+          size:       0,
+        });
+      }
+
+      this.deb("  GRPS: nounify %s %s, def: %s, size: %s", instance, noun, def, def.size);
+
+      if (instance === def){
         // special case group !== asset
         return instance;
 
@@ -9286,8 +9371,8 @@ HANNIBAL = (function(H){
         return this.createAsset({
           instance:   instance,
           property:   noun,
-          definition: world[noun],
-          size:       world[noun].size,
+          definition: def,
+          size:       def.size,
         });
       }
 
@@ -10019,7 +10104,7 @@ HANNIBAL = (function(H){
 
       // variables available in listener with *this*. All optional
 
-      active:         true,           // ready to init/launch ...
+      active:         false,          // ready to init/launch ...
       description:    "dancer",       // text field for humans 
       civilisations:  ["*"],          // lists all supported cics
       interval:       2,              // call onInterval every x ticks
@@ -10954,10 +11039,10 @@ HANNIBAL = (function(H){
       cacheTechnology = {},
       cacheBuildings  = {},
       filterBuildings = name => (
-        !name.contains("palisade") || 
-        !name.contains("field")    ||
-        !name.contains("wall")     ||
-        !name.contains("civil.centre")
+        !name.includes("palisade") || 
+        !name.includes("field")    ||
+        !name.includes("wall")     ||
+        !name.includes("civil.centre")
       ),
       pritt = function(task){
         var t1 = task[0].name,
@@ -11139,8 +11224,8 @@ HANNIBAL = (function(H){
 
     if (diff > 0){  
       return ( 
-        name.contains("town") ? [[m.produce, cacheBuildings.house, diff]] :
-        name.contains("city") ? [[m.produce, cacheBuildings.defensetower, diff]] :
+        name.includes("town") ? [[m.produce, cacheBuildings.house, diff]] :
+        name.includes("city") ? [[m.produce, cacheBuildings.defensetower, diff]] :
           deb("ERROR : advance requires class WTF")
       );
     }
@@ -11436,7 +11521,7 @@ HANNIBAL = (function(H){
       }
 
       // this we won't do
-      if (name.contains("phase")){
+      if (name.includes("phase")){
         tokens = name.split(".");
         if (tokens.length > 0 && tokens[0] === "phase"){return [[m.advance, name]];}
         if (tokens.length > 1 && tokens[1] === "phase"){return [[m.advance, name]];}
@@ -12335,8 +12420,14 @@ HANNIBAL = (function(H){
 
           H.toArray(arguments).forEach( noun => {
 
+            if (typeof noun !== "string" || !this.corpus.nouns[noun]){
+              // Ignore invalid nouns so a bad script can't crash the AI.
+              self.deb("WARN  : DSL: nounify: unknown noun %s", noun);
+              return;
+            }
+
             // this.deb("   DSL: nounifying: %s for %s", noun, world.actor);
-            
+             
             var host = this.handler.nounify(world, actor, noun);
             this.setnoun(world, noun, new this.corpus.nouns[noun](host, noun));
 
@@ -12781,12 +12872,12 @@ HANNIBAL = (function(H) {
   };
   H.Launcher.prototype.CustomInit = function(gameState, sharedScript) {
 
-    var 
+    var
       t0  = Date.now(),
-      deb = this.deb.bind(this), 
-      ss  = sharedScript, 
+      deb = this.deb.bind(this),
+      ss  = sharedScript || gameState.sharedScript,
       gs  = gameState,
-      civ = ss.playersData[this.id].civ;
+      civ = ss ? ss.playersData[this.id].civ : "unknown";
 
     // H.deb("      :");
     // H.deb("      :");
@@ -12808,7 +12899,7 @@ HANNIBAL = (function(H) {
     this.logPlayers(ss.playersData);
 
     // connect the context
-    this.context.connectEngine(this, gameState, sharedScript, this.settings);
+    this.context.connectEngine(this, gameState, ss, this.settings);
     this.context.initialize(H.Config);
 
     // This bot faces the other players
@@ -13008,14 +13099,14 @@ HANNIBAL = (function(H) {
     deb("      :");
     deb("     A:     map from DEBUG: %s / %s", this.map, ss.gameType);
     deb("     A:                map: w: %s, h: %s, c: %s, cells: %s", ss.passabilityMap.width, ss.passabilityMap.height, ss.circularMap, gs.cellSize);
-    deb("     A:          _entities: %s [  ]", H.count(ss._entities));
-    deb("     A:         _templates: %s [  ]", H.count(ss._templates));
-    deb("     A:     _techTemplates: %s [  ]", H.count(ss._techTemplates));
-    deb("     H: _techModifications: %s [%s]", H.count(ss._techModifications[id]), H.attribs(ss._techModifications[id]));
-    deb("     H:     researchQueued: %s [  ]", H.count(ss.playersData[id].researchQueued));
-    deb("     H:    researchStarted: %s [  ]", H.count(ss.playersData[id].researchStarted));
-    deb("     H:    researchedTechs: %s [%s]", H.count(ss.playersData[id].researchedTechs), H.attribs(ss.playersData[id].researchedTechs).join(", "));
-    deb("     A:       barterPrices: %s", H.prettify(ss.barterPrices));
+    deb("     A:          _entities: %s [  ]", H.count(ss._entities || {}));
+    deb("     A:         _templates: %s [  ]", H.count(ss._templates || {}));
+    deb("     A:     _techTemplates: %s [  ]", H.count(ss._techTemplates || {}));
+    deb("     H: _techModifications: %s [%s]", H.count((ss._techModifications || {})[id] || {}), H.attribs((ss._techModifications || {})[id] || {}));
+    deb("     H:     researchQueued: %s [  ]", H.count((ss.playersData[id] || {}).researchQueued || {}));
+    deb("     H:    researchStarted: %s [  ]", H.count((ss.playersData[id] || {}).researchStarted || {}));
+    deb("     H:    researchedTechs: %s [%s]", H.count((ss.playersData[id] || {}).researchedTechs || {}), H.attribs((ss.playersData[id] || {}).researchedTechs || {}).join(", "));
+    deb("     A:       barterPrices: %s", H.prettify(ss.barterPrices || {}));
 
   };
   H.Launcher.prototype.logPlayers = function(players){
@@ -13270,6 +13361,10 @@ HANNIBAL = (function(H){
             this[child] = new H.LIB.Grid(this.context)
               .import()
               .deserialize(data[child]);
+
+            // Recompute derived grid fields (width/height/length/size).
+            // Older cached data only stores the typed array payload.
+            this[child].initialize({title: child, bits: "c8"});
           }
         });
       }
@@ -14289,7 +14384,7 @@ HANNIBAL = (function(H){
           .split("]").join("")
           .split(";")
           .filter(s => !!s)
-          .map(String.trim)
+          .map(s => s.trim())
       );
     }, 
 
@@ -14789,7 +14884,7 @@ HANNIBAL = (function(H){
     },
     consume: function(ids){ //TODO
       this.eachAll( (generic, specific, stats, id, res) => {
-        if (H.contains(ids, id)){
+        if (H.includes(ids, id)){
           res.consumed = true;
           stats.consumed += res.supply;
           stats.depleted += 1;
@@ -15090,7 +15185,7 @@ HANNIBAL = (function(H){
             index   = pos2Index(posTest);
             value   = dataScan[pos2Index(posTest)];
 
-            if (H.contains(recentTiles, index)){
+            if (H.includes(recentTiles, index)){
               continue;
 
             } else if (value === 0){
@@ -15127,7 +15222,7 @@ HANNIBAL = (function(H){
             //   deb(" SCOUT: ignored outside tile %s, x: %s, y: %s", index, posNext[0], posNext[1]); 
             //   continue;}
 
-            if (H.contains(recentTiles, index)){
+            if (H.includes(recentTiles, index)){
               deb(" SCOUT: ignored recent tile %s", index);
               continue;}
 
@@ -15224,7 +15319,7 @@ return H; }(HANNIBAL));
   //         y1   = ~~Math.min(height, cy + radius),
   //         x = 0, y = y1, dx = 0, dy = 0, r2 = 0;
 
-  //       if (H.contains(attackTiles, index)){
+  //       if (H.includes(attackTiles, index)){
   //         deb(" SCOUT: ignored attacker at: %s", index);
   //         return;
   //       }
@@ -15376,7 +15471,7 @@ return H; }(HANNIBAL));
   //             index   = pos2Index(posTest);
   //             value   = data[pos2Index(posTest)];
 
-  //             if (H.contains(recentTiles, index)){
+  //             if (H.includes(recentTiles, index)){
   //               continue;
 
   //             } else if (value === 0){
@@ -15413,7 +15508,7 @@ return H; }(HANNIBAL));
   //             //   deb(" SCOUT: ignored outside tile %s, x: %s, y: %s", index, posNext[0], posNext[1]); 
   //             //   continue;}
 
-  //             if (H.contains(recentTiles, index)){
+  //             if (H.includes(recentTiles, index)){
   //               deb(" SCOUT: ignored recent tile %s", index);
   //               continue;}
 
@@ -15511,8 +15606,8 @@ HANNIBAL = (function(H){
       this.techsAvailable = [];
       this.techsFeasable  = [];
       this.technologies
-        .filter(tech => !H.contains(this.simulator.researchStarted, tech))
-        .filter(tech => !H.contains(this.curstate.data.tech, tech))
+        .filter(tech => !H.includes(this.simulator.researchStarted, tech))
+        .filter(tech => !H.includes(this.curstate.data.tech, tech))
         .forEach(tech => {
           result = this.checker.check(tech, false);
           if (result.available){
@@ -15762,10 +15857,10 @@ HANNIBAL = (function(H){
             self.researchStarted.push(node.name);
             self.triggers.add(~~(self.tick + amount * time/1.6), () => {
               data.tech.push(node.name);
-              if (node.name.contains("phase") && node.name.contains("town")){
+              if (node.name.includes("phase") && node.name.includes("town")){
                 data.tech.push("phase.town");
                 self.context.curphase = "phase.town";
-              } else if (node.name.contains("phase") && node.name.contains("city")) {
+              } else if (node.name.includes("phase") && node.name.includes("city")) {
                 data.tech.push("phase.city");
                 self.context.curphase = "phase.city";
               } else {
@@ -15986,7 +16081,7 @@ HANNIBAL = (function(H){
     initialize: function(){
       if (!this.verbs){
         this.verbs    = this.culture.verbs;
-        this.capverbs = this.culture.verbs.map(String.toUpperCase);
+        this.capverbs = this.culture.verbs.map(function(s){return s.toUpperCase();});
         this.nodes    = {};
         this.edges    = [];
       }
@@ -16276,7 +16371,7 @@ HANNIBAL = (function(H){
 
             case "LIMIT"    : ops += ~~rest; results = results.slice(0, ~~rest); break;
             case "RAND"     : ops += ~~rest; results = this.sample(results, ~~rest);  break;
-            case "DISTINCT" : ops += results.length; results = [...Set(results)]; break;
+            case "DISTINCT" : ops += results.length; results = [...new Set(results)]; break;
 
             case "SORT" :
 
@@ -16506,7 +16601,7 @@ HANNIBAL = (function(H){
     T = H.T || {},
     CTX = null, PID = NaN, CC  = NaN, 
     self, tick = 0, map, sequence = "", 
-    chat  = (msg) => Engine.PostCommand(PID, {"type": "chat", "message": msg}),
+    chat  = (msg) => Engine.PostCommand(PID, {"type": "aichat", "message": msg}),
     ccloc = () => {
       var [x, y] = CTX.entities[CTX.villages.main].position();
       return x + ", " + y;
@@ -16519,7 +16614,7 @@ HANNIBAL = (function(H){
     },
     chat: function( /* arguments */ ){
       var msg = H.format.apply(null, H.toArray(arguments));
-      return () => Engine.PostCommand(PID, {"type": "chat", "message": msg});
+      return () => Engine.PostCommand(PID, {"type": "aichat", "message": msg});
     },
     destroy: function(ids){ 
       ids = Array.isArray(ids) ? ids : arguments.length > 1 ? H.toArray(arguments) : [ids];
@@ -16530,6 +16625,9 @@ HANNIBAL = (function(H){
     },
     launch: function(group){
       return () => {
+        if (!H.Groups[group] || H.Groups[group].active === false){
+          return;
+        }
         return CTX.groups.launch({groupname: group, cc: CC});
       };
     },
@@ -17067,7 +17165,7 @@ HANNIBAL = (function(H) {
         result.available = true; return result;
       }
 
-      if (operations.some(op => op[1] === "research_tech" && op[2].contains("phase"))){
+      if (operations.some(op => op[1] === "research_tech" && op[2].includes("phase"))){
         result.notnow = true; return result;
       } else {
         result.feasible = true; return result;
@@ -17296,7 +17394,7 @@ HANNIBAL = (function (H){
       var klasses = ent.classes().map(String.toLowerCase);
       // deb(klasses + "//" + this.config.data.sharedBuildingClasses);
       return this.config.data.sharedBuildingClasses.some(function (klass){
-        return H.contains(klasses, klass);
+        return H.includes(klasses, klass);
       });
     },
     getPhaseNecessities: function (options){ // phase, centre, tick

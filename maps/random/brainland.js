@@ -1,16 +1,16 @@
 /*jslint bitwise: true, browser: true, evil:true, devel: true, todo: true, debug: true, nomen: true, plusplus: true, sloppy: true, vars: true, white: true, indent: 2 */
-/*globals 
-  uneval, log, RMS, TERRAIN_SEPARATOR, PI, TWO_PI, 
+/*globals
+  uneval, log, TERRAIN_SEPARATOR, PI, TWO_PI,
   cos, sin, round, randInt, abs, floor,
-  g_MapSettings, 
-  randomizeBiome, InitMap, getNumPlayers, createTileClass, placeTerrain, sortPlayers, getMapSize, randFloat, createArea, 
-  scaleByMapSize, fractionToTiles, addToClass, createObjectGroup, createStragglerTrees, 
-  placeGenericFortress, placeObject, placePolygonalWall, 
-  ClumpPlacer, LayeredPainter, SimpleGroup, SimpleObject, createFood, 
-  avoidClasses, createBumps, createHills, createMines, createDecoration, createForests, createMountains, createLayeredPatches, createPatches, 
-  rBiomeT1, rBiomeT2, rBiomeT3, rBiomeT4, rBiomeT5, rBiomeT6, rBiomeT7, rBiomeT8, rBiomeT10, rBiomeT11, rBiomeT12, 
-  rBiomeE1, rBiomeE2, rBiomeE3, rBiomeE4, rBiomeE5, rBiomeE6, rBiomeE7, rBiomeE8, rBiomeE10, rBiomeE11, rBiomeE12, rBiomeE13, 
-  rBiomeA1, rBiomeA2, rBiomeA5, rBiomeA6, rBiomeA7, rBiomeA8, 
+  g_MapSettings,
+  randomizeBiome, InitMap, getNumPlayers, createTileClass, placeTerrain, sortPlayers, getMapSize, randFloat, createArea,
+  scaleByMapSize, fractionToTiles, addToClass, createObjectGroup, createStragglerTrees,
+  placeGenericFortress, placeObject, placePolygonalWall,
+  ClumpPlacer, LayeredPainter, SimpleGroup, SimpleObject, createFood,
+  avoidClasses, createBumps, createHills, createMines, createDecoration, createForests, createMountains, createLayeredPatches, createPatches,
+  rBiomeT1, rBiomeT2, rBiomeT3, rBiomeT4, rBiomeT5, rBiomeT6, rBiomeT7, rBiomeT8, rBiomeT10, rBiomeT11, rBiomeT12,
+  rBiomeE1, rBiomeE2, rBiomeE3, rBiomeE4, rBiomeE5, rBiomeE6, rBiomeE7, rBiomeE8, rBiomeE10, rBiomeE11, rBiomeE12, rBiomeE13,
+  rBiomeA1, rBiomeA2, rBiomeA5, rBiomeA6, rBiomeA7, rBiomeA8,
   ExportMap
 */
 
@@ -18,118 +18,198 @@
 /*globals H */
 
 var tt = Date.now();
+var g_Map; // Global map object
 
-RMS.LoadLibrary("rmgen");
-RMS.LoadLibrary("rmghelper"); // import H.deb/fmt
+// Constants that were provided by old 0AD engine
+var PI = Math.PI;
+var TWO_PI = 2 * Math.PI;
+
+// Math functions that were provided by old 0AD engine as globals
+var cos = Math.cos;
+var sin = Math.sin;
+var round = Math.round;
+var randInt = function(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+};
+var abs = Math.abs;
+var floor = Math.floor;
+var randFloat = function(min, max) {
+  return Math.random() * (max - min) + min;
+};
+
+Engine.LoadLibrary("rmgen");
+Engine.LoadLibrary("rmgen-common");
+Engine.LoadLibrary("rmghelper"); // import H.deb/fmt
+
+// Stub functions for compatibility with modern 0AD API
+// In modern 0AD, biomes are handled differently via setBiome() and g_Terrains/g_Gaia/g_Decoratives
+// These stubs provide a single biome (temperate) for compatibility
+
+// Initialize the map using modern RandomMap API
+function InitMap() {
+  if (typeof g_Map === 'undefined') {
+    g_Map = new RandomMap(3, "temperate_grass_03");
+  }
+}
+
+// Stub function for compatibility
+function getMapSize() {
+  return g_Map.size;
+}
+
+// Stub function for compatibility
+function createTileClass() {
+  return g_Map.createTileClass();
+}
+
+// Stub function for compatibility - places terrain at specific tile coordinates
+function placeTerrain(x, z, texture) {
+  g_Map.setTexture(new Vector2D(x, z), texture);
+}
+
+// Stub function for compatibility - adds a tile to a tile class
+function addToClass(x, z, tileClass) {
+  tileClass.add(new Vector2D(x, z));
+}
+
+// Stub function for compatibility - places an entity at specific position
+function placeObject(x, z, template, player, angle) {
+  var entity = new Entity(g_Map.getEntityID(), template, player, new Vector2D(x, z), angle);
+  g_Map.entities.push(entity);
+}
+
+// Stub function for compatibility - exports the map
+function ExportMap() {
+  return g_Map;
+}
+
+function randomizeBiome() {
+  return 1; // Return temperate biome index
+}
+
+// Terrain stubs - temperate biome values
+function rBiomeT1() { return "temperate_grass_03"; }  // Main terrain
+function rBiomeT2() { return "temperate_grass_01"; }  // Forest floor 1
+function rBiomeT3() { return "temperate_grass_02"; }  // Forest floor 2
+function rBiomeT4() { return "temperate_cliff_01"; }  // Cliff
+function rBiomeT5() { return "temperate_mud_01"; }    // Tier 1 terrain
+function rBiomeT6() { return "temperate_grass_dirt_01"; } // Tier 2 terrain
+function rBiomeT7() { return "temperate_grass_dirt_03"; } // Tier 3 terrain
+function rBiomeT8() { return "temperate_rocks_dirt_01"; }  // Hill
+function rBiomeT10() { return "temperate_paving_03"; }  // Road
+function rBiomeT11() { return "temperate_paving_03"; }  // Road wild
+function rBiomeT12() { return "temperate_grass_mud_01"; } // Tier 4 terrain
+
+// Entity stubs - gaia entities
+function rBiomeE1() { return "gaia/tree/poplar_dead"; }  // Tree 1
+function rBiomeE2() { return "gaia/tree/deciduous_02"; } // Tree 2
+function rBiomeE3() { return "gaia/tree/euro_beech"; }   // Tree 3
+function rBiomeE4() { return "gaia/tree/carob"; }        // Tree 4
+function rBiomeE5() { return "gaia/tree/olive"; }       // Tree 5
+function rBiomeE6() { return "gaia/fruit/berry_01"; }    // Fruit bush
+function rBiomeE7() { return "gaia/fauna_chicken"; }     // Chicken
+function rBiomeE8() { return "gaia/fauna_deer"; }        // Main huntable animal
+function rBiomeE10() { return "gaia/fauna_sheep"; }       // Secondary huntable animal
+function rBiomeE11() { return "gaia/rock/temperate_large_02"; } // Stone large
+function rBiomeE12() { return "gaia/rock/temperate_small"; }   // Stone small
+function rBiomeE13() { return "gaia/ore/temperate_01"; }       // Metal large
+
+// Actor stubs - decorative props
+function rBiomeA1() { return "actor|props/flora/grass_soft_large_tall.xml"; } // Grass
+function rBiomeA2() { return "actor|props/flora/grass_soft_large.xml"; }    // Grass short
+function rBiomeA5() { return "actor|geology/stone_granite_med.xml"; }      // Rock large
+function rBiomeA6() { return "actor|geology/stone_granite_small.xml"; }    // Rock medium
+function rBiomeA7() { return "actor|flora/trees/temperate_bush_biome.xml"; } // Bush medium
+function rBiomeA8() { return "actor|props/flora/bush_medit_sm.xml"; }      // Bush small
 
 // /Daten/Projects/Osiris/ps/trunk/binaries/data/mods/public/civs[civ].json.StartEntities
 
 var START = {
   "athen" : [
-      [1, "structures/athen_civil_centre"], 
-      [4, "units/athen_support_female_citizen"], 
-      [10, "units/athen_infantry_spearman_b"], 
-      [2, "units/athen_infantry_slinger_b"], 
-      [1, "units/athen_cavalry_javelinist_b"], 
+      [1, "structures/athen/civil_centre"],
+      [4, "units/athen/support_female_citizen"],
+      [2, "units/athen/infantry_spearman_b"],
+      [2, "units/athen/infantry_slinger_b"],
+      [1, "units/athen/cavalry_javelineer_b"],
     ],
     "brit" : [
-      [1, "structures/brit_civil_centre"], 
-      [4, "units/brit_support_female_citizen"], 
-      [2, "units/brit_infantry_spearman_b"], 
-      [2, "units/brit_infantry_slinger_b"], 
-      [1, "units/brit_cavalry_javelinist_b"], 
-      [1, "units/brit_war_dog_e"], 
+      [1, "structures/brit/civil_centre"],
+      [4, "units/brit/support_female_citizen"],
+      [2, "units/brit/infantry_spearman_b"],
+      [2, "units/brit/infantry_slinger_b"],
+      [1, "units/brit/cavalry_javelineer_b"],
+      [1, "units/brit/war_dog"],
     ],
     "cart" : [
-      [1, "structures/cart_civil_centre"], 
-      [4, "units/cart_support_female_citizen"], 
-      [2, "units/cart_infantry_spearman_b"], 
-      [2, "units/cart_infantry_slinger_b"], 
-      [1, "units/cart_cavalry_javelinist_b"], 
-    ],
-    "celt" : [
-      [1, "structures/celt_civil_centre"], 
-      [4, "units/celt_support_female_citizen"], 
-      [2, "units/celt_infantry_spearman_b"], 
-      [2, "units/celt_infantry_javelinist_b"], 
-      [1, "units/celt_cavalry_swordsman_b"], 
+      [1, "structures/cart/civil_centre"],
+      [4, "units/cart/support_female_citizen"],
+      [2, "units/cart/infantry_spearman_b"],
+      [2, "units/cart/infantry_archer_b"],
+      [1, "units/cart/cavalry_javelineer_b"],
     ],
     "gaul" : [
-      [1, "structures/gaul_civil_centre"], 
-      [4, "units/gaul_support_female_citizen"], 
-      [2, "units/gaul_infantry_javelinist_b"], 
-      [2, "units/gaul_infantry_spearman_b"], 
-      [1, "units/gaul_cavalry_javelinist_b"], 
-    ],
-    "hele" : [
-      [1, "structures/hele_civil_centre"], 
-      [4, "units/hele_support_female_citizen"], 
-      [2, "units/hele_infantry_spearman_b"], 
-      [2, "units/hele_infantry_javelinist_b"], 
-      [1, "units/hele_cavalry_swordsman_b"], 
+      [1, "structures/gaul/civil_centre"],
+      [4, "units/gaul/support_female_citizen"],
+      [2, "units/gaul/infantry_spearman_b"],
+      [2, "units/gaul/infantry_javelineer_b"],
+      [1, "units/gaul/cavalry_javelineer_b"],
     ],
     "iber" : [
-      [1, "structures/iber_civil_centre"], 
-      [4, "units/iber_support_female_citizen"], 
-      [2, "units/iber_infantry_swordsman_b"], 
-      [2, "units/iber_infantry_javelinist_b"], 
-      [1, "units/iber_cavalry_spearman_b"], 
+      [1, "structures/iber/civil_centre"],
+      [4, "units/iber/support_female_citizen"],
+      [2, "units/iber/infantry_swordsman_b"],
+      [2, "units/iber/infantry_javelineer_b"],
+      [1, "units/iber/cavalry_javelineer_b"],
     ],
     "mace" : [
-      [1, "structures/mace_civil_centre"], 
-      [4, "units/mace_support_female_citizen"], 
-      [2, "units/mace_infantry_spearman_b"], 
-      [2, "units/mace_infantry_javelinist_b"], 
-      [1, "units/mace_cavalry_spearman_b"], 
+      [1, "structures/mace/civil_centre"],
+      [4, "units/mace/support_female_citizen"],
+      [2, "units/mace/infantry_pikeman_b"],
+      [2, "units/mace/infantry_javelineer_b"],
+      [1, "units/mace/cavalry_spearman_b"],
     ],
     "maur" : [
-      [1, "structures/maur_civil_centre"], 
-      [4, "units/maur_support_female_citizen"], 
-      [2, "units/maur_infantry_spearman_b"], 
-      [2, "units/maur_infantry_archer_b"], 
-      [1, "units/maur_cavalry_javelinist_b"], 
-      [1, "units/maur_support_elephant"], 
+      [1, "structures/maur/civil_centre"],
+      [4, "units/maur/support_female_citizen"],
+      [2, "units/maur/infantry_spearman_b"],
+      [2, "units/maur/infantry_archer_b"],
+      [1, "units/maur/cavalry_javelineer_b"],
+      [1, "units/maur/support_elephant"],
     ],
     "pers" : [
-      [1, "structures/pers_civil_centre"], 
-      [4, "units/pers_support_female_citizen"], 
-      [2, "units/pers_infantry_spearman_b"], 
-      [2, "units/pers_infantry_archer_b"], 
-      [1, "units/pers_cavalry_javelinist_b"], 
+      [1, "structures/pers/civil_centre"],
+      [4, "units/pers/support_female_citizen"],
+      [2, "units/pers/infantry_spearman_b"],
+      [2, "units/pers/infantry_archer_b"],
+      [1, "units/pers/cavalry_javelineer_b"],
     ],
     "ptol" : [
-      [1, "structures/ptol_civil_centre"], 
-      [4, "units/ptol_support_female_citizen"], 
-      [2, "units/ptol_infantry_spearman_b"], 
-      [2, "units/ptol_infantry_archer_b"], 
-      [1, "units/ptol_cavalry_javelinist_b"], 
+      [1, "structures/ptol/civil_centre"],
+      [4, "units/ptol/support_female_citizen"],
+      [2, "units/ptol/infantry_pikeman_b"],
+      [2, "units/ptol/infantry_slinger_b"],
+      [1, "units/ptol/cavalry_archer_b"],
     ],
     "rome" : [
-      [1, "structures/rome_civil_centre"], 
-      [4, "units/rome_support_female_citizen"], 
-      [2, "units/rome_infantry_swordsman_b"], 
-      [2, "units/rome_infantry_javelinist_b"], 
-      [1, "units/rome_cavalry_spearman_b"], 
+      [1, "structures/rome/civil_centre"],
+      [4, "units/rome/support_female_citizen"],
+      [2, "units/rome/infantry_swordsman_b"],
+      [2, "units/rome/infantry_javelineer_b"],
+      [1, "units/rome/cavalry_spearman_b"],
     ],
     "sele" : [
-      [1, "structures/sele_civil_centre"], 
-      [4, "units/sele_support_female_citizen"], 
-      [4, "units/sele_infantry_spearman_2_b"], 
-      [1, "units/sele_cavalry_javelinist"], 
-    ],  
-    "spart" : [
-      [1, "structures/spart_civil_centre"], 
-      [4, "units/spart_support_female_citizen"], 
-      [2, "units/spart_infantry_spearman_b"], 
-      [2, "units/spart_infantry_javelinist_b"], 
-      [1, "units/spart_cavalry_javelinist_b"], 
+      [1, "structures/sele/civil_centre"],
+      [4, "units/sele/support_female_citizen"],
+      [2, "units/sele/infantry_spearman_b"],
+      [2, "units/sele/infantry_javelineer_b"],
+      [1, "units/sele/cavalry_javelineer_b"],
     ],
-    "theb" : [
-      [1, "structures/theb_civil_centre"], 
-      [4, "units/theb_support_female_citizen"], 
-      [2, "units/theb_infantry_spearman_b"], 
-      [2, "units/theb_infantry_javelinist_b"], 
-      [1, "units/theb_cavalry_javelinist_b"], 
+    "spart" : [
+      [1, "structures/spart/civil_centre"],
+      [4, "units/spart/support_female_citizen"],
+      [2, "units/spart/infantry_spearman_b"],
+      [2, "units/spart/infantry_javelineer_b"],
+      [1, "units/spart/cavalry_javelineer_b"],
     ],
   };
 
@@ -146,86 +226,29 @@ function getCCEntities (civ /*, bot */){
 // ]
 
 
-//random terrain textures
-var random_terrain = randomizeBiome();
+//random terrain textures - will be initialized in GenerateMap()
+var random_terrain, numPlayers, mapSize,
+  tMainTerrain, tForestFloor1, tForestFloor2, tCliff,
+  tTier1Terrain, tTier2Terrain, tTier3Terrain, tHill,
+  tRoad, tRoadWild, tTier4Terrain,
+  oTree1, oTree2, oTree3, oTree4, oTree5,
+  oFruitBush, oChicken, oMainHuntableAnimal, oSecondaryHuntableAnimal,
+  oStoneLarge, oStoneSmall, oMetalLarge,
+  aGrass, aGrassShort, aRockLarge, aRockMedium, aBushMedium, aBushSmall,
+  pForest1, pForest2, clPlayer, clHill, clForest, clRock, clMetal, clFood, clBaseResource;
 
-const 
-  tMainTerrain  = rBiomeT1(),
-  tForestFloor1 = rBiomeT2(),
-  tForestFloor2 = rBiomeT3(),
-  tCliff        = rBiomeT4(),
-  tTier1Terrain = rBiomeT5(),
-  tTier2Terrain = rBiomeT6(),
-  tTier3Terrain = rBiomeT7(),
-  tHill         = rBiomeT8(),
-  // tDirt = rBiomeT9(),
-  tRoad         = rBiomeT10(),
-  tRoadWild     = rBiomeT11(),
-  tTier4Terrain = rBiomeT12(),
-  // tShoreBlend = rBiomeT13(),
-  // tShore = rBiomeT14(),
-  // tWater = rBiomeT15(),
+// initialize map - moved into GenerateMap()
+// log("Initializing map...");
+// InitMap();
+// const numPlayers = getNumPlayers();
+// const mapSize = getMapSize();
 
-  // gaia entities
-  oTree1        = rBiomeE1(),
-  oTree2        = rBiomeE2(),
-  oTree3        = rBiomeE3(),
-  oTree4        = rBiomeE4(),
-  oTree5        = rBiomeE5(),
-  oFruitBush    = rBiomeE6(),
-  oChicken      = rBiomeE7(),
-  oMainHuntableAnimal = rBiomeE8(),
-  // oFish = rBiomeE9(),
-  oSecondaryHuntableAnimal = rBiomeE10(),
-  oStoneLarge   = rBiomeE11(),
-  oStoneSmall   = rBiomeE12(),
-  oMetalLarge   = rBiomeE13(),
+// silly globals - moved into GenerateMap()
+var group, playerIDs, playerX, playerZ, playerAngle;
 
-  // decorative props
-  aGrass        = rBiomeA1(),
-  aGrassShort   = rBiomeA2(),
-  // aReeds = rBiomeA3(),
-  // aLillies = rBiomeA4(),
-  aRockLarge    = rBiomeA5(),
-  aRockMedium   = rBiomeA6(),
-  aBushMedium   = rBiomeA7(),
-  aBushSmall    = rBiomeA8(),
+// create tile classes - moved into GenerateMap()
+// var clPlayer = createTileClass(), clHill = createTileClass(), ...
 
-  pForest1 = [tForestFloor2 + TERRAIN_SEPARATOR + oTree1, tForestFloor2 + TERRAIN_SEPARATOR + oTree2, tForestFloor2],
-  pForest2 = [tForestFloor1 + TERRAIN_SEPARATOR + oTree4, tForestFloor1 + TERRAIN_SEPARATOR + oTree5, tForestFloor1];
-  //BUILDING_ANGlE = -PI/4;
-
-// initialize map
-
-log("Initializing map...");
-
-InitMap();
-
-const 
-  numPlayers = getNumPlayers(),
-  mapSize = getMapSize();
-  // mapArea = mapSize*mapSize;
-
-// silly globals
-var
-  group,
-  playerIDs,
-  playerX,
-  playerZ,
-  playerAngle;
-  // clDirt = createTileClass();
-
-// create tile classes
-var 
-  clPlayer  = createTileClass(),
-  clHill    = createTileClass(),
-  clForest  = createTileClass(),
-  // clWater = createTileClass(),
-  clRock    = createTileClass(),
-  clMetal   = createTileClass(),
-  clFood    = createTileClass(),
-  clBaseResource = createTileClass();
-  // clSettlement = createTileClass();
 
 
 function step0  (/* options */) {
@@ -318,8 +341,14 @@ function step3  (/* options */) {
     var ix = round(fx);
     var iz = round(fz);
 
-    // var civ = g_MapSettings.PlayerData[id-1].Civ;
-    var civ = getCivCode(id-1);
+    // Get civ from g_MapSettings - modern 0AD API
+    var civ;
+    if (g_MapSettings && g_MapSettings.PlayerData && g_MapSettings.PlayerData[id-1]) {
+      civ = g_MapSettings.PlayerData[id-1].Civ;
+    } else {
+      // Fallback to default if not available
+      civ = "athen";
+    }
 
     addToClass(ix, iz, clPlayer);
     addToClass(ix+5, iz, clPlayer);
@@ -376,12 +405,13 @@ function step3  (/* options */) {
       }
 
     }(fx, fz, id, angle));
-    
+
     // create the city patch
     var cityRadius = radius/3;
-    var placer = new ClumpPlacer(PI*cityRadius*cityRadius, 0.6, 0.3, 10, ix, iz);
+    // Modified for modern API: ClumpPlacer(size, coherence, smoothness, failFraction, centerPosition)
+    var placer = new ClumpPlacer(PI*cityRadius*cityRadius, 0.6, 0.3, 0, new Vector2D(ix, iz));
     var painter = new LayeredPainter([tRoadWild, tRoad], [1]);
-    
+
     createArea(placer, painter, null);
     
     // create animals
@@ -391,10 +421,10 @@ function step3  (/* options */) {
       var aDist = 7;
       var aX = round(fx + aDist * cos(aAngle));
       var aZ = round(fz + aDist * sin(aAngle));
-      
+
       group = new SimpleGroup(
         [new SimpleObject(oChicken, 5,5, 0,2)],
-        true, clBaseResource, aX, aZ
+        true, clBaseResource, new Vector2D(aX, aZ)
       );
       createObjectGroup(group, 0);
     }
@@ -406,10 +436,9 @@ function step3  (/* options */) {
     var bbZ = round(fz + bbDist * sin(bbAngle));
     group = new SimpleGroup(
       [new SimpleObject(oFruitBush, 5,5, 0,3)],
-      true, clBaseResource, bbX, bbZ
+      true, clBaseResource, new Vector2D(bbX, bbZ)
     );
-    createObjectGroup(group, 0);
-    
+    createObjectGroup(group, 0);    
     // create metal mine
     var mAngle = bbAngle;
     while(abs(mAngle - bbAngle) < PI/3)
@@ -421,7 +450,7 @@ function step3  (/* options */) {
     var mZ = round(fz + mDist * sin(mAngle));
     group = new SimpleGroup(
       [new SimpleObject(oMetalLarge, 1,1, 0,0)],
-      true, clBaseResource, mX, mZ
+      true, clBaseResource, new Vector2D(mX, mZ)
     );
     createObjectGroup(group, 0);
     
@@ -431,7 +460,7 @@ function step3  (/* options */) {
     mZ = round(fz + mDist * sin(mAngle));
     group = new SimpleGroup(
       [new SimpleObject(oStoneLarge, 1,1, 0,2)],
-      true, clBaseResource, mX, mZ
+      true, clBaseResource, new Vector2D(mX, mZ)
     );
     createObjectGroup(group, 0);
     var hillSize = PI * radius * radius;
@@ -443,7 +472,7 @@ function step3  (/* options */) {
     var tZ = round(fz + tDist * sin(tAngle));
     group = new SimpleGroup(
       [new SimpleObject(oTree1, num, num, 0,3)],
-      false, clBaseResource, tX, tZ
+      false, clBaseResource, new Vector2D(tX, tZ)
     );
     createObjectGroup(group, 0, avoidClasses(clBaseResource,2));
     
@@ -457,7 +486,7 @@ function step3  (/* options */) {
       var gZ = round(fz + gDist * sin(gAngle));
       group = new SimpleGroup(
         [new SimpleObject(aGrassShort, 2,5, 0,1, -PI/8,PI/8)],
-        false, clBaseResource, gX, gZ
+        false, clBaseResource, new Vector2D(gX, gZ)
       );
       createObjectGroup(group, 0);
     }
@@ -616,15 +645,81 @@ var sequence = [
 
 function tab (s,l){l=l||4;s=new Array(l+1).join(" ")+s;return s.substr(s.length-l);}
 
-H.deb("generating: brainland / %s, %s players, size: %s ### ---", H.biomes[random_terrain], numPlayers, mapSize);
-sequence.forEach(function (task){
-  var t0 = Date.now();
-  RMS.SetProgress(task[0]); log(task[2]);
-  task[1].apply(null, task.slice(3));
-  H.deb("  %s -> %s | %s ...", tab(Date.now() - t0), task[2], JSON.stringify(task.slice(3)));
-});
+// Main generator function required by modern 0AD
+function* GenerateMap()
+{
+  // Initialize map
+  log("Initializing map...");
+  InitMap();
 
-H.deb("finished: brainland (" + sequence.length + " steps in " + ((Date.now() - tt)/1000).toFixed(1) + " secs) ### ---\n");
+  // Set terrain and biome variables
+  random_terrain = randomizeBiome();
 
+  tMainTerrain  = rBiomeT1();
+  tForestFloor1 = rBiomeT2();
+  tForestFloor2 = rBiomeT3();
+  tCliff        = rBiomeT4();
+  tTier1Terrain = rBiomeT5();
+  tTier2Terrain = rBiomeT6();
+  tTier3Terrain = rBiomeT7();
+  tHill         = rBiomeT8();
+  tRoad         = rBiomeT10();
+  tRoadWild     = rBiomeT11();
+  tTier4Terrain = rBiomeT12();
 
-ExportMap();
+  oTree1        = rBiomeE1();
+  oTree2        = rBiomeE2();
+  oTree3        = rBiomeE3();
+  oTree4        = rBiomeE4();
+  oTree5        = rBiomeE5();
+  oFruitBush    = rBiomeE6();
+  oChicken      = rBiomeE7();
+  oMainHuntableAnimal = rBiomeE8();
+  oSecondaryHuntableAnimal = rBiomeE10();
+  oStoneLarge   = rBiomeE11();
+  oStoneSmall   = rBiomeE12();
+  oMetalLarge   = rBiomeE13();
+
+  aGrass        = rBiomeA1();
+  aGrassShort   = rBiomeA2();
+  aRockLarge    = rBiomeA5();
+  aRockMedium   = rBiomeA6();
+  aBushMedium   = rBiomeA7();
+  aBushSmall    = rBiomeA8();
+
+  pForest1 = [tForestFloor2 + TERRAIN_SEPARATOR + oTree1, tForestFloor2 + TERRAIN_SEPARATOR + oTree2, tForestFloor2];
+  pForest2 = [tForestFloor1 + TERRAIN_SEPARATOR + oTree4, tForestFloor1 + TERRAIN_SEPARATOR + oTree5, tForestFloor1];
+
+  // Set map dimensions
+  numPlayers = getNumPlayers();
+  mapSize = getMapSize();
+
+  // Create tile classes
+  clPlayer  = createTileClass();
+  clHill    = createTileClass();
+  clForest  = createTileClass();
+  clRock    = createTileClass();
+  clMetal   = createTileClass();
+  clFood    = createTileClass();
+  clBaseResource = createTileClass();
+
+  // Initialize player variables
+  group = [];
+  playerIDs = [];
+  playerX = [];
+  playerZ = [];
+  playerAngle = [];
+
+  // Execute map generation steps
+  H.deb("generating: brainland / %s, %s players, size: %s ### ---", H.biomes[random_terrain], numPlayers, mapSize);
+  sequence.forEach(function (task){
+    var t0 = Date.now();
+    log(task[2]);
+    task[1].apply(null, task.slice(3));
+    H.deb("  %s -> %s | %s ...", tab(Date.now() - t0), task[2], JSON.stringify(task.slice(3)));
+  });
+
+  H.deb("finished: brainland (" + sequence.length + " steps in " + ((Date.now() - tt)/1000).toFixed(1) + " secs) ### ---\n");
+
+  return g_Map;
+}

@@ -16,7 +16,7 @@ data = {
     "sele",
     "theb",
   ],
-  "pathMaps": "/home/noiv/.local/share/0ad/mods/public/maps/scenarios/",
+  "pathMaps": "/home/doraemon/.local/share/0ad/mods/public/maps/scenarios/",
   "testMaps": [
     "Arcadia 02.xml",
     "Azure Coast.xml",

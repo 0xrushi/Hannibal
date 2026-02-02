@@ -175,7 +175,7 @@ def xdotool(command) :
   subprocess.call(("xdotool %s" % command).split(" "))
 
 def cleanup() :
-  for k, v in files.iteritems() : v.close()
+  for k, v in files.items() : v.close()
 
 def writeDEBUG():
   fTest = open(locations["deb"], 'w')
@@ -199,12 +199,12 @@ def processMaps():
     DEBUG["map"] = mp
     writeDEBUG()
     cmd0AD  = [pyrogenesis, "-quickstart", "-autostart=" + mp, "-mod=public", "-mod:hannibal", "-autostart-ai=1:hannibal"]
-    proc0AD = subprocess.Popen(cmd0AD, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    print "  > " + " ".join(cmd0AD)
+    proc0AD = subprocess.Popen(cmd0AD, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
+    print("  > " + " ".join(cmd0AD))
 
     try:
 
-      for line in iter(proc0AD.stdout.readline, b'') : 
+      for line in iter(proc0AD.stdout.readline, '') : 
 
         sline = line.strip() 
 
@@ -219,11 +219,11 @@ def processMaps():
           pass
           # sys.stdout.write(line)
 
-    except KeyboardInterrupt, e :
+    except KeyboardInterrupt as e :
       if proc0AD : proc0AD.terminate()
       break
 
-  print "done."
+  print("done.")
 
 def launch(typ="rel", map="Arcadia 02", bots=2):
 
@@ -245,11 +245,11 @@ def launch(typ="rel", map="Arcadia 02", bots=2):
   cmd0AD = buildCmd(typ, map, bots)
   print ("  cmd: %s" %  " ".join(cmd0AD));
 
-  proc0AD = subprocess.Popen(cmd0AD, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+  proc0AD = subprocess.Popen(cmd0AD, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
 
   try:
 
-    for line in iter(proc0AD.stdout.readline, b'') :
+    for line in iter(proc0AD.stdout.readline, '') :
 
       ## line has everything
       ## sline is stripped
@@ -352,7 +352,7 @@ def launch(typ="rel", map="Arcadia 02", bots=2):
         else : 
           sys.stdout.write("" + line)
 
-  except KeyboardInterrupt, e :
+  except KeyboardInterrupt as e :
     terminate()
 
 if __name__ == '__main__':

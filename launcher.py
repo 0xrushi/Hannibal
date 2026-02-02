@@ -42,7 +42,7 @@ sys.dont_write_bytecode = True
 
 ## maps etc.
 from data import data
-from paths import paths
+
 
 winX = 1922; winY = -40; winW = 1276; winH = 768;
 
@@ -62,11 +62,11 @@ bcolors = {
 
 
 folders = {
-  "pro"   : "/media/noiv/OS/Octets/Projects/GIT/Hannibal",              ## project
-  "rel"   : "/usr/games/0ad",                                           ## release
-  "trunk" : "/Daten/Projects/Osiris/ps/trunk",                          ## svn
-  "share" : "/home/noiv/.local/share",                                  ## user mod
-  "export": "/media/noiv/OS/Octets/Projects/GIT/Hannibal/exports/"      ## export JSON
+  "pro"   : "/home/doraemon/Documents/Hannibal",              ## project
+  "rel"   : "/usr/bin/0ad",                                   ## release
+  "trunk" : "/Daten/Projects/Osiris/ps/trunk",                ## svn
+  "share" : "/home/doraemon/.local/share",                    ## user mod
+  "export": "/home/doraemon/Documents/Hannibal/exports/"      ## export JSON
 }
 
 
@@ -74,8 +74,8 @@ folders = {
 locations = {
   "rel" : folders["rel"],                                                             ## release
   "svn" : folders["trunk"] + "/binaries/system/pyrogenesis",                          ## svn
-  "hbl" : folders["share"] + "/0ad/mods/public/simulation/ai/hannibal/",              ## bot folder
-  "deb" : folders["share"] + "/0ad/mods/public/simulation/ai/hannibal/_debug.js",     ## bot folder
+  "hbl" : folders["share"] + "/0ad/mods/hannibal/simulation/ai/hannibal/",              ## bot folder
+  "deb" : folders["share"] + "/0ad/mods/hannibal/simulation/ai/hannibal/_debug.js",     ## bot folder
   "log" : folders["pro"]   + "/logs/last.log",                                        ## log file
   "ana" : folders["pro"]   + "/analysis/",                                            ## analysis csv file
 }
@@ -103,8 +103,8 @@ DEBUG = {
 
   "bots": {
     "0" :  {"num": 0, "xdo": 0, "fil": 0, "log": 4, "sup": 1, "tst": 0, "cht": 0, "dmp": 0 }, ## that's gaya
-    "1" :  {"num": 0, "xdo": 1, "fil": 1, "log": 4, "sup": 0, "tst": 1, "cht": 1, "dmp": 1 },
-    "2" :  {"num": 0, "xdo": 0, "fil": 0, "log": 3, "sup": 0, "tst": 1, "cht": 1, "dmp": 1 },
+    "1" :  {"num": 0, "xdo": 1, "fil": 1, "log": 4, "sup": 0, "tst": 1, "cht": 1, "dmp": 0 },
+    "2" :  {"num": 0, "xdo": 0, "fil": 0, "log": 3, "sup": 0, "tst": 1, "cht": 1, "dmp": 0 },
     "3" :  {"num": 0, "xdo": 0, "fil": 0, "log": 3, "sup": 0, "tst": 1, "cht": 0, "dmp": 0 },
     "4" :  {"num": 0, "xdo": 0, "fil": 0, "log": 3, "sup": 0, "tst": 1, "cht": 0, "dmp": 0 },
     "5" :  {"num": 0, "xdo": 0, "fil": 0, "log": 3, "sup": 0, "tst": 1, "cht": 0, "dmp": 0 },
@@ -149,7 +149,6 @@ def buildCmd(typ="rel", map="Arcadia 02", bots=2, size=192) :
     "-quickstart",                   ## load faster (disables audio and some system info logging)
     "-autostart=" + map,             ## enables autostart and sets MAPNAME; TYPEDIR is skirmishes, scenarios, or random
     "-mod=public",                   ## start the game using NAME mod
-    "-mod=charts", 
     "-mod=hannibal", 
 
     "-autostart-seed=1",             ##  sets random map SEED value (default 0, use -1 for random)
@@ -191,7 +190,7 @@ def xdotool(command) :
   subprocess.call(("xdotool %s" % command).split(" "))
 
 def cleanup() :
-  for k, v in files.iteritems() : v.close()
+  for k, v in files.items() : v.close()
 
 def writeDEBUG():
   fTest = open(locations["deb"], 'w')
@@ -215,12 +214,12 @@ def processMaps():
     DEBUG["map"] = mp
     writeDEBUG()
     cmd0AD  = [pyrogenesis, "-quickstart", "-autostart=" + mp, "-mod=public", "-mod:hannibal", "-autostart-ai=1:hannibal"]
-    proc0AD = subprocess.Popen(cmd0AD, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    print "  > " + " ".join(cmd0AD)
+    proc0AD = subprocess.Popen(cmd0AD, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
+    print("  > " + " ".join(cmd0AD))
 
     try:
 
-      for line in iter(proc0AD.stdout.readline, b'') : 
+      for line in iter(proc0AD.stdout.readline, '') : 
 
         sline = line.strip() 
 
@@ -235,11 +234,11 @@ def processMaps():
           pass
           # sys.stdout.write(line)
 
-    except KeyboardInterrupt, e :
+    except KeyboardInterrupt as e :
       if proc0AD : proc0AD.terminate()
       break
 
-  print "done."
+  print("done.")
 
 def launch(typ="rel", map="Arcadia 02", bots=2, size=192):
 
@@ -259,11 +258,11 @@ def launch(typ="rel", map="Arcadia 02", bots=2, size=192):
   cmd0AD = buildCmd(typ, map, bots, size)
   print ("  cmd: %s" %  " ".join(cmd0AD));
 
-  proc0AD = subprocess.Popen(cmd0AD, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+  proc0AD = subprocess.Popen(cmd0AD, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
 
   try:
 
-    for line in iter(proc0AD.stdout.readline, b'') :
+    for line in iter(proc0AD.stdout.readline, '') :
 
       ## line has everything
       ## sline is stripped
@@ -366,9 +365,8 @@ def launch(typ="rel", map="Arcadia 02", bots=2, size=192):
         else : 
           sys.stdout.write("" + line)
 
-  except KeyboardInterrupt, e :
+  except KeyboardInterrupt as e :
     terminate()
-
 if __name__ == '__main__':
 
     args = sys.argv[1:]
