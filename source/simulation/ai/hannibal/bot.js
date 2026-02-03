@@ -34,12 +34,13 @@ HANNIBAL = (function(H){
         "brain",
         "groups",
         "comms",
-        "economy", 
+        "economy",
         "culture",
         "effector",
         "military",
         "villages",
         "resources",
+        "rpc",
       ],
 
       canplay: false, // assuming game/map is incomplete
@@ -100,13 +101,14 @@ HANNIBAL = (function(H){
 
         [
 
+          ["rpc", "RPC",             this.rpc          ],
           ["evt", "Events",          this.events       ],
           ["com", "Communication",   this.comms        ],
-          ["brn", "Brain",           this.brain        ], 
-          ["map", "Map",             this.map          ], 
-          ["gps", "Groups",          this.groups       ], 
-          ["mil", "Military",        this.military     ], 
-          ["sts", "Economy.Stats",   this.economy.stats], 
+          ["brn", "Brain",           this.brain        ],
+          ["map", "Map",             this.map          ],
+          ["gps", "Groups",          this.groups       ],
+          ["mil", "Military",        this.military     ],
+          ["sts", "Economy.Stats",   this.economy.stats],
           ["eco", "Economy",         this.economy      ],
 
         ].forEach(task => {

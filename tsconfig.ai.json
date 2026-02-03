@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "target": "ES5",
+    "module": "none",
+    "outDir": "ts-build",
+    "rootDir": "ts",
+    "removeComments": false,
+    "sourceMap": false,
+    "declaration": false,
+    "strict": false,
+    "noImplicitAny": false,
+    "skipLibCheck": true,
+    "alwaysStrict": false
+  },
+  "include": [
+    "ts/mods/hannibal/simulation/ai/hannibal/hannibal.ts",
+    "ts/source/simulation/ai/hannibal/culture.ts",
+    "ts/source/simulation/ai/hannibal/rpc.ts"
+  ]
+}
