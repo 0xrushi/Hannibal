@@ -1,195 +1,76 @@
-# Hannibal RPC Usage Guide
+# Hannibal Realtime API (RL HTTP) Usage Guide
 
-Control Hannibal AI using Python client APIs with file-based command transport.
+Control a running 0 A.D. match via the built-in RL interface HTTP server.
+
+This is the canonical realtime transport for scripts/agents.
 
 ## Quick Start
 
-### 1. Python Client API
+### 1. Start 0 A.D. with RL interface enabled
 
-Use the Python client to send commands:
+The repo launcher supports enabling the RL interface with an env var:
+
+```bash
+HANNIBAL_RL_INTERFACE=127.0.0.1:6000 python launcher.py
+```
+
+### 2. Use the Python RL client
 
 ```python
-from hannibal_api.client import HannibalClient
+from hannibal_api.rl_interface_client import RLInterfaceClient
 
-# Create client
-client = HannibalClient(player_id=1, timeout=5.0)
+rl = RLInterfaceClient("http://127.0.0.1:6000")
 
-# Send a command (writes to file)
-client.select([186, 188])
+# Move units (no simulation step required)
+rl.walk_push(player_id=1, entity_ids=[186, 188], x=150, z=200)
 ```
 
-### 2. Execute in Game
+## Endpoints
 
-In the game console (F9), execute:
+- `POST /evaluate`: Evaluate JS in the Simulation2 ScriptInterface and return JSON.
+- `POST /step`: Apply one simulation step and optional (player_id, command) inputs.
 
-```javascript
-AIs.AIs[0].bot.rpc.executeFromFile()
-```
+In code, these are wrapped by `hannibal_api/rl_interface_client.py`.
 
-This reads the command file, executes it, and writes the response.
+## Example Commands
 
-### 3. Read Response
-
-The Python client automatically reads the response:
+### Move Entities (walk)
 
 ```python
-# The select() call above already returned the response
-result = client.select([186, 188])
-print(result)  # {'selected_ids': [186, 188]}
+from hannibal_api.rl_interface_client import RLInterfaceClient
+
+rl = RLInterfaceClient("http://127.0.0.1:6000")
+
+# Canonical move command is `walk`.
+rl.walk_push(player_id=1, entity_ids=[186, 188], x=150, z=200)
 ```
 
-## Workflow
-
-```
-Python Client
-    ↓ writes command.json
-~/.config/0ad/config/hannibal_rpc_command.json
-    ↓ manually trigger in console
-Game: AIs.AIs[0].bot.rpc.executeFromFile()
-    ↓ reads, executes, writes
-~/.config/0ad/config/hannibal_rpc_response.json
-    ↓ Python reads response
-Python Client returns result
-```
-
-## Available Commands
-
-### Select Entities
+### Evaluate (omniscient query)
 
 ```python
-result = client.select([186, 188, 190])
-# Returns: {'selected_ids': [186, 188]}
+from hannibal_api.rl_interface_client import RLInterfaceClient
+
+rl = RLInterfaceClient("http://127.0.0.1:6000")
+
+# Note: the RL interface returns JSON. If your snippet returns a JSON string,
+# you may need to json.loads(...) it in Python.
+out = rl.evaluate("(function(){ return JSON.stringify({ok:true}); })()")
+print(out)
 ```
 
-### Move Entities
+## Legacy Notes (Deprecated)
 
-```python
-result = client.move([186, 188], x=150, z=200)
-# Returns: {'moved_ids': [186, 188], 'position': {'x': 150, 'z': 200}}
-```
+Older documentation in this repo referenced manual UI steps and file-based command/response files.
+That is not required for realtime API play and should be considered deprecated in favor of RL HTTP.
 
-### Gather Resources
+## OpenEnv Proxy (Recommended)
 
-```python
-# Select workers first
-client.select([186, 188])
+If you want an OpenEnv-style API (`/reset`, `/step`, `/state`, `/ws`) that proxies to the RL interface, use:
 
-# Then gather
-result = client.gather("wood.tree")
-# Returns: {'entity_ids': [186, 188], 'resource': 'wood.tree', 'targets': [...]}
-```
-
-Resource types: `wood.tree`, `food.fruit`, `food.grain`, `stone.rock`, `metal.ore`
-
-### Build Structures
-
-```python
-# Using selected builders
-client.select([186, 188])
-result = client.build("house", mode="selected")
-
-# Or let economy manage it
-result = client.build("barracks", amount=2, mode="economy")
-```
-
-### Train Units
-
-```python
-result = client.train("female.citizen", amount=3)
-# Returns: {'unit': 'female.citizen', 'queued': 3}
-```
-
-### Research Technology
-
-```python
-result = client.research("phase_town")
-# Returns: {'tech': 'phase_town', 'queued': True}
-```
-
-### Get Player State
-
-```python
-state = client.get_state()
-print(state)
-# {
-#   'player_id': 1,
-#   'resources': {'food': 300, 'wood': 200, 'stone': 100, 'metal': 50},
-#   'population': 25,
-#   'population_cap': 50,
-#   'phase': 'village',
-#   'current_selection': [186, 188]
-# }
-```
-
-### List Entities
-
-```python
-# List all entities
-entities = client.list_entities()
-print(f"Found {entities['count']} entities")
-
-# Filter by class
-workers = client.list_entities(filter={"class": "Worker"})
-```
-
-## Direct Console Usage
-
-You can also call RPC methods directly in the console without Python:
-
-```javascript
-var rpc = AIs.AIs[0].bot.rpc;
-
-// Move entities
-rpc.move([186, 188], 150, 200);
-
-// Select
-rpc.select([186, 188]);
-
-// Gather
-rpc.gather("wood.tree");
-
-// Build
-rpc.build("house", 1, "selected");
-
-// Train
-rpc.train("female.citizen", 3);
-
-// Get state
-rpc.getState();
-```
-
-## TypeScript Version
-
-The RPC module is also available in TypeScript with full type definitions:
-
-- Location: `ts/source/simulation/ai/hannibal/rpc.ts`
-- Includes type definitions for all commands, results, and game entities
-- Compile with: `npx tsc -p tsconfig.ai.json`
-
-## Error Handling
-
-Commands return `{ok: true, result: {...}}` on success or `{ok: false, error: "..."}` on failure.
-
-Python client raises `RuntimeError` on command failure:
-
-```python
-try:
-    client.gather("wood.tree")
-except RuntimeError as e:
-    print(f"Command failed: {e}")
-```
-
-## File Locations
-
-- Command file: `~/.config/0ad/config/hannibal_rpc_command.json`
-- Response file: `~/.config/0ad/config/hannibal_rpc_response.json`
+- `openenv_zero_ad/server.py`
+- `tools/run_openenv_zero_ad_server.py`
+- `docs/terminal_setup.md`
 
 ## Automation
 
-To automate command execution without manual console input, you could:
-
-1. Create a mod that polls for commands periodically
-2. Use game events to trigger command checks
-3. Hook into Hannibal's tick loop (add polling back if needed)
-
-For now, manual execution via `executeFromFile()` keeps the system simple and transparent.
+Your automation is the Python script itself: it talks to the running match over HTTP.

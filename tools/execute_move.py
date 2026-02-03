@@ -16,7 +16,7 @@ something calls /step.  Use --run in a separate terminal to keep the
 simulation ticking so you can play normally and see AI activity.
 
 Requirements:
-  HANNIBAL_RL_INTERFACE=127.0.0.1:6000 python launcher.py
+  ZEROAD_RL_INTERFACE=127.0.0.1:6000 python launcher.py
 """
 
 import sys
@@ -154,14 +154,23 @@ def run_simulation(client):
     print("Simulation runner: calling /step continuously. Ctrl+C to stop.")
     print("  The game should now be playable -- click to move units, AI will run.")
     step_count = 0
+    sleep_s = float(os.environ.get("ZEROAD_STEP_SLEEP", "0.005"))
     try:
         while True:
-            client.step([])
-            step_count += 1
-            if step_count % 100 == 0:
-                print(f"  ... {step_count} steps")
-            # ~5ms sleep keeps game running at normal-ish speed
-            time.sleep(0.005)
+            try:
+                client.step([])
+                step_count += 1
+                if step_count % 100 == 0:
+                    print(f"  ... {step_count} steps")
+            except Exception as e:
+                # If the game is still starting up or the RL server stalls,
+                # don't exit the runner; keep retrying.
+                print(f"  step error: {e}")
+                time.sleep(0.5)
+                continue
+
+            # Sleep controls simulation speed. Default is ~5ms.
+            time.sleep(sleep_s)
     except KeyboardInterrupt:
         print(f"\nStopped after {step_count} steps.")
 
@@ -175,7 +184,11 @@ def parse_flag(args, prefix):
 
 
 def main():
-    url = os.environ.get("HANNIBAL_RL_URL", "http://127.0.0.1:6000")
+    url = (
+        os.environ.get("ZEROAD_RL_URL")
+        or os.environ.get("HANNIBAL_RL_URL")
+        or "http://127.0.0.1:6000"
+    )
     client = RLInterfaceClient(url)
 
     if len(sys.argv) >= 2 and sys.argv[1] == "--diag":
@@ -213,10 +226,18 @@ def main():
 
     if len(sys.argv) < 4:
         print("Usage:")
-        print("  python tools/execute_move.py --run                  # keep game ticking")
-        print("  python tools/execute_move.py --reveal               # reveal whole map")
-        print("  python tools/execute_move.py --list                 # list player 1 units")
-        print("  python tools/execute_move.py --list --player=2      # list player 2 units")
+        print(
+            "  python tools/execute_move.py --run                  # keep game ticking"
+        )
+        print(
+            "  python tools/execute_move.py --reveal               # reveal whole map"
+        )
+        print(
+            "  python tools/execute_move.py --list                 # list player 1 units"
+        )
+        print(
+            "  python tools/execute_move.py --list --player=2      # list player 2 units"
+        )
         print("  python tools/execute_move.py <ids> <x> <z>          # move entities")
         print("  python tools/execute_move.py <ids> <x> <z> --steps=200")
         print("  python tools/execute_move.py --diag                 # diagnostics")
@@ -239,7 +260,7 @@ def main():
     if steps_flag:
         follow_up_steps = int(steps_flag)
 
-    pid = int(os.environ.get("HANNIBAL_PID", "1"))
+    pid = int(os.environ.get("ZEROAD_PID") or os.environ.get("HANNIBAL_PID") or "1")
 
     try:
         # Send the walk command with the first /step
@@ -250,7 +271,9 @@ def main():
             for eid in entity_ids:
                 ent = state["entities"].get(str(eid))
                 if ent:
-                    print(f"  Entity {eid}: pos={ent.get('position', '?')} owner={ent.get('owner', '?')}")
+                    print(
+                        f"  Entity {eid}: pos={ent.get('position', '?')} owner={ent.get('owner', '?')}"
+                    )
                 else:
                     print(f"  Entity {eid}: NOT FOUND in state (wrong ID?)")
 
@@ -270,7 +293,9 @@ def main():
 
     except URLError as e:
         print(f"Error: RL interface not reachable at {url}: {e}")
-        print("Start 0 A.D. with: HANNIBAL_RL_INTERFACE=127.0.0.1:6000 python launcher.py")
+        print(
+            "Start 0 A.D. with: ZEROAD_RL_INTERFACE=127.0.0.1:6000 python launcher.py"
+        )
         raise SystemExit(2)
 
     print("Done.")
