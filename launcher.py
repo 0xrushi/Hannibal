@@ -6,9 +6,8 @@ This repo no longer ships a 0 A.D. AI/mod. The purpose of this launcher is to
 start 0 A.D. with the built-in RL interface HTTP server enabled.
 
 Environment variables:
-- HANNIBAL_RL_INTERFACE: address for 0 A.D. `--rl-interface` (kept for backward compatibility)
-  Example: HANNIBAL_RL_INTERFACE=127.0.0.1:6000
-- ZEROAD_RL_INTERFACE: same as above (preferred)
+- ZEROAD_RL_INTERFACE: address for 0 A.D. `--rl-interface`
+  Example: ZEROAD_RL_INTERFACE=127.0.0.1:6000
 
 Examples:
   ZEROAD_RL_INTERFACE=127.0.0.1:6000 python launcher.py
@@ -36,9 +35,7 @@ def build_cmd(
         f"-yres={yres}",
     ]
 
-    rl_addr = os.environ.get("ZEROAD_RL_INTERFACE") or os.environ.get(
-        "HANNIBAL_RL_INTERFACE"
-    )
+    rl_addr = os.environ.get("ZEROAD_RL_INTERFACE")
     if rl_addr:
         cmd.append(f"--rl-interface={rl_addr}")
 

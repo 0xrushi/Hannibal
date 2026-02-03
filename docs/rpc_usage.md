@@ -11,7 +11,7 @@ This is the canonical realtime transport for scripts/agents.
 The repo launcher supports enabling the RL interface with an env var:
 
 ```bash
-HANNIBAL_RL_INTERFACE=127.0.0.1:6000 python launcher.py
+ZEROAD_RL_INTERFACE=127.0.0.1:6000 python launcher.py
 ```
 
 ### 2. Use the Python RL client

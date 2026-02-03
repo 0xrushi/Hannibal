@@ -133,6 +133,8 @@ def main() -> None:
             + venv_prefix
             + f"export ZEROAD_RL_URL={rl_url!r} && "
             + "export ZEROAD_STEP_SLEEP=0.01 && "
+            + "export ZEROAD_STATE_OUT=run/latest_state.json && "
+            + "export ZEROAD_STATE_EVERY_N=10 && "
             + "echo 'Waiting for RL interface...'; "
             + f"until curl -sS -m 1 -X POST {rl_url}/evaluate --data '1+1' >/dev/null 2>&1; do sleep 0.5; done; "
             + "echo 'RL interface is up. Waiting for match init...'; sleep 2; "

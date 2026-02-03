@@ -155,13 +155,33 @@ def run_simulation(client):
     print("  The game should now be playable -- click to move units, AI will run.")
     step_count = 0
     sleep_s = float(os.environ.get("ZEROAD_STEP_SLEEP", "0.005"))
+
+    state_out = os.environ.get("ZEROAD_STATE_OUT")
+    state_every_n = int(os.environ.get("ZEROAD_STATE_EVERY_N", "10"))
+    state_out_path = Path(state_out).expanduser() if state_out else None
+    if state_out_path:
+        state_out_path.parent.mkdir(parents=True, exist_ok=True)
+
     try:
         while True:
             try:
-                client.step([])
+                state = client.step([])
                 step_count += 1
                 if step_count % 100 == 0:
                     print(f"  ... {step_count} steps")
+
+                if (
+                    state_out_path
+                    and state_every_n > 0
+                    and step_count % state_every_n == 0
+                    and isinstance(state, dict)
+                ):
+                    # Snapshot export so external agents can observe without
+                    # calling /step themselves.
+                    tmp = state_out_path.with_suffix(state_out_path.suffix + ".tmp")
+                    payload = {"step": step_count, "time": time.time(), "state": state}
+                    tmp.write_text(json.dumps(payload), encoding="utf-8")
+                    tmp.replace(state_out_path)
             except Exception as e:
                 # If the game is still starting up or the RL server stalls,
                 # don't exit the runner; keep retrying.
@@ -184,11 +204,7 @@ def parse_flag(args, prefix):
 
 
 def main():
-    url = (
-        os.environ.get("ZEROAD_RL_URL")
-        or os.environ.get("HANNIBAL_RL_URL")
-        or "http://127.0.0.1:6000"
-    )
+    url = os.environ.get("ZEROAD_RL_URL") or "http://127.0.0.1:6000"
     client = RLInterfaceClient(url)
 
     if len(sys.argv) >= 2 and sys.argv[1] == "--diag":
@@ -260,7 +276,7 @@ def main():
     if steps_flag:
         follow_up_steps = int(steps_flag)
 
-    pid = int(os.environ.get("ZEROAD_PID") or os.environ.get("HANNIBAL_PID") or "1")
+    pid = int(os.environ.get("ZEROAD_PID") or "1")
 
     try:
         # Send the walk command with the first /step

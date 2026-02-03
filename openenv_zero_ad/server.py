@@ -29,11 +29,7 @@ def create_app(
     """Create a FastAPI app implementing the OpenEnv HTTP shape."""
 
     if session is None:
-        resolved = (
-            rl_url
-            or os.environ.get("ZEROAD_RL_URL")
-            or os.environ.get("HANNIBAL_RL_URL")
-        )
+        resolved = rl_url or os.environ.get("ZEROAD_RL_URL")
         session = ZeroADSession(resolved)
 
     app = FastAPI(

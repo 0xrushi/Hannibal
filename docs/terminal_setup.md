@@ -12,6 +12,8 @@ ZEROAD_RL_INTERFACE=127.0.0.1:6000 python launcher.py --map="scenarios/arcadia"
 
 ```bash
 export ZEROAD_STEP_SLEEP=0.01
+export ZEROAD_STATE_OUT=run/latest_state.json
+export ZEROAD_STATE_EVERY_N=10
 python tools/execute_move.py --run
 ```
 
@@ -68,6 +70,15 @@ You can run a helper script (works even when the tmux script picks port 8001):
 
 ```bash
 API_BASE=http://127.0.0.1:8001 bash tools/openenv_examples.sh
+```
+
+## Optional: LLM vs LLM match driver
+
+This reads omniscient snapshots written by the stepper (`ZEROAD_STATE_OUT`) and sends actions to the OpenEnv proxy.
+
+```bash
+export OPENAI_API_KEY=...  # required
+python tools/llm_match.py --config configs/llm_match.toml
 ```
 
 ## Optional: Start Everything in tmux

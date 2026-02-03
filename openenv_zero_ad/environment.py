@@ -71,10 +71,7 @@ class ZeroADSession:
 
     def __init__(self, rl_url: Optional[str] = None):
         self.rl_url = (
-            rl_url
-            or os.environ.get("ZEROAD_RL_URL")
-            or os.environ.get("HANNIBAL_RL_URL")
-            or "http://127.0.0.1:6000"
+            rl_url or os.environ.get("ZEROAD_RL_URL") or "http://127.0.0.1:6000"
         ).rstrip("/")
         self.rl = RLInterfaceClient(self.rl_url)
 
