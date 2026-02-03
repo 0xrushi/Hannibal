@@ -45,6 +45,27 @@ def _normalize_eval_result(value: Any) -> Any:
     return value
 
 
+def _extract_int_list(value: Any) -> list[int]:
+    """Extract a list of ints from a JSON-ish container.
+
+    Accepts lists/tuples containing ints or digit-strings.
+    Skips bools (since bool is a subclass of int).
+    """
+    if value is None:
+        return []
+    if isinstance(value, (list, tuple)):
+        out: list[int] = []
+        for v in value:
+            if isinstance(v, bool):
+                continue
+            if isinstance(v, int):
+                out.append(v)
+            elif isinstance(v, str) and v.isdigit():
+                out.append(int(v))
+        return out
+    return []
+
+
 class ZeroADSession:
     """Stateful proxy session for one running 0 A.D. instance."""
 
@@ -76,6 +97,107 @@ class ZeroADSession:
         out = _normalize_eval_result(self.rl.evaluate(code))
         if isinstance(out, dict) and isinstance(out.get("time"), (int, float)):
             return float(out["time"])
+        return None
+
+    def _validate_sim_command(
+        self, player_id: int, cmd: Dict[str, Any]
+    ) -> Optional[str]:
+        """Return a validation error string, or None if ok.
+
+        This is a best-effort guardrail to return a clear error before sending
+        invalid entity IDs into the simulation.
+        """
+
+        # Entity IDs expected to be owned by player_id.
+        owned_ids: list[int] = []
+        owned_ids.extend(_extract_int_list(cmd.get("entities")))
+
+        # IDs that must exist (owner may be different).
+        must_exist_ids: list[int] = []
+        for key in ("target",):
+            v = cmd.get(key)
+            if isinstance(v, bool):
+                continue
+            if isinstance(v, int):
+                must_exist_ids.append(v)
+            elif isinstance(v, str) and v.isdigit():
+                must_exist_ids.append(int(v))
+
+        for key in ("entity", "garrisonHolder"):
+            v = cmd.get(key)
+            if isinstance(v, bool):
+                continue
+            if isinstance(v, int):
+                owned_ids.append(v)
+            elif isinstance(v, str) and v.isdigit():
+                owned_ids.append(int(v))
+
+        owned_ids.extend(_extract_int_list(cmd.get("garrisonHolders")))
+
+        # Deduplicate and drop non-positive IDs.
+        owned_ids = sorted({i for i in owned_ids if isinstance(i, int) and i > 0})
+        must_exist_ids = sorted(
+            {i for i in must_exist_ids if isinstance(i, int) and i > 0}
+        )
+
+        # Basic type-specific checks.
+        if cmd.get("type") == "walk":
+            if not owned_ids:
+                return "walk requires non-empty 'entities'"
+            if not isinstance(cmd.get("x"), (int, float)) or not isinstance(
+                cmd.get("z"), (int, float)
+            ):
+                return "walk requires numeric 'x' and 'z'"
+
+        if not owned_ids and not must_exist_ids:
+            return None
+
+        payload_owned = json.dumps(owned_ids, separators=(",", ":"))
+        payload_exist = json.dumps(must_exist_ids, separators=(",", ":"))
+
+        code = (
+            "(function(){"
+            f"var playerId={int(player_id)};"
+            f"var ownedIds={payload_owned};"
+            f"var existIds={payload_exist};"
+            "var missing=[];"
+            "var wrongOwner=[];"
+            "function exists(id){"
+            "  return !!(Engine.QueryInterface(id,IID_Ownership) || Engine.QueryInterface(id,IID_Identity) || Engine.QueryInterface(id,IID_Position));"
+            "}"
+            "for (var i=0;i<ownedIds.length;i++){"
+            "  var id=ownedIds[i];"
+            "  var cmpOwn=Engine.QueryInterface(id,IID_Ownership);"
+            "  if (!cmpOwn){ missing.push(id); continue; }"
+            "  var owner = typeof cmpOwn.GetOwner === 'function' ? cmpOwn.GetOwner() : cmpOwn.owner;"
+            "  if (owner !== playerId) wrongOwner.push({id:id, owner:owner});"
+            "}"
+            "for (var j=0;j<existIds.length;j++){"
+            "  var tid=existIds[j];"
+            "  if (!exists(tid)) missing.push(tid);"
+            "}"
+            "if (missing.length || wrongOwner.length){"
+            "  return {ok:false, missing:missing, wrongOwner:wrongOwner};"
+            "}"
+            "return {ok:true};"
+            "})()"
+        )
+
+        try:
+            out = _normalize_eval_result(self.rl.evaluate(code))
+        except Exception as e:
+            return f"validation_failed: {e}"
+
+        if isinstance(out, dict) and out.get("ok") is False:
+            parts: list[str] = []
+            missing = out.get("missing")
+            wrong = out.get("wrongOwner")
+            if isinstance(missing, list) and missing:
+                parts.append(f"missing={missing}")
+            if isinstance(wrong, list) and wrong:
+                parts.append(f"wrongOwner={wrong}")
+            return "invalid_entity_ids: " + ", ".join(parts)
+
         return None
 
     def reset(
@@ -139,6 +261,17 @@ class ZeroADSession:
             result: Any
             try:
                 if isinstance(action, PushCommandAction):
+                    err = self._validate_sim_command(action.player_id, action.cmd)
+                    if err:
+                        obs = ZeroADObservation(
+                            ok=False,
+                            error=err,
+                            episode_id=self._state.episode_id,
+                            step_count=self._state.step_count,
+                            stepper_detected=self._state.stepper_detected,
+                            sim_time=self._state.last_sim_time,
+                        )
+                        return obs.model_dump(mode="json")
                     result = self.rl.push_command(action.player_id, action.cmd)
                 elif isinstance(action, EvaluateAction):
                     # RLInterfaceClient.evaluate uses a fixed 10s timeout internally.
